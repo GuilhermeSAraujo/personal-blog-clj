@@ -1,0 +1,42 @@
+# Leiningen
+target/
+.lein-*
+.nrepl-port
+.nrepl-history
+
+# Clojure
+*.class
+*.jar
+*.war
+checkouts/
+
+# CIDER / Emacs
+.cider/
+*.elc
+
+# IntelliJ / Cursive
+.idea/
+*.iml
+*.ipr
+*.iws
+out/
+
+# VS Code / Calva
+.vscode/
+.clj-kondo/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs and temp
+*.log
+*.tmp
+*.temp
+*.swp
+*~
+
+# Environment / secrets
+.env
+.env.local
+*.pem

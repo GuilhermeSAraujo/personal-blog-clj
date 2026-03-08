@@ -1,0 +1,110 @@
+---
+alwaysApply: true
+---
+
+---
+description: Diplomat hexagonal architecture patterns for services
+globs: "**/*.clj"
+alwaysApply: false
+---
+
+# Diplomat Architecture (Hexagonal)
+
+This project uses a hexagonal architecture with a **Diplomat** layer for external communication. Follow these patterns when creating or modifying services.
+
+## Layer Overview
+
+| Layer | Location | Purpose |
+|-------|----------|---------|
+| **Domain** | `domain/` | Core business logic, models, controllers. May depend on diplomat for outbound calls. |
+| **Diplomat** | `diplomat/` | Inbound/outbound ports: HTTP, messages, DB clients. |
+| **Wire** | `wire/` | Schemas for data at system boundaries (in/out formats). |
+| **Adapters** | `adapters/` | Translate between wire format ↔ domain format. |
+
+## Controller Contract (Domain Layer)
+
+**Controllers may only receive parameters of types declared in the domain (model types) or infrastructure protocols for outbound calls, and must always return domain model types.**
+
+- **Parameters**: Arguments must be domain model types (e.g. `model.user/User`) or infrastructure protocol types (`IDatomic`, `IHttpClient`, `IProducer`) when the controller needs to persist data, make HTTP calls, or produce messages. The controller passes these protocol instances to diplomat functions (e.g. `diplomat.datomic.client/save`, `diplomat.http-client/*`, `diplomat.producer/produce-*-message!`). Never pass wire schemas directly.
+- **Return values**: Controllers must return domain model types only. The diplomat layer is responsible for converting domain models to wire format for responses.
+- **Dependencies**: Controllers may depend on diplomat when they need to make outbound calls (HTTP, messages, DB). They use `diplomat.http-client`, `diplomat.producer`, `diplomat.datomic.client`, etc., passing in the `IHttpClient`, `IProducer`, or `IDatomic` instances received as parameters.
+
+## Dependency Rules
+
+- **Domain** → Diplomat (when controller needs outbound calls). May depend on diplomat namespaces (http-client, producer, datomic.client).
+- **Diplomat** → Domain, Adapters, Wire. Orchestrates external I/O.
+- **Adapters** → Domain, Wire. Pure translation functions.
+- **Wire** → Schema only. No domain or diplomat imports.
+
+## Directory Structure
+
+```
+src/example_project/
+├── domain/           # Core (hexagon center)
+│   ├── model/        # Domain entities (User, etc.)
+│   └── controller.clj # Use case orchestration
+├── diplomat/        # Ports (inbound/outbound)
+│   ├── http_server.clj   # Inbound HTTP
+│   ├── http_client.clj   # Outbound HTTP
+│   ├── producer.clj     # Outbound messages
+│   ├── consumer.clj     # Inbound messages
+│   └── datomic/         # DB client
+├── wire/             # Boundary schemas
+│   ├── in/           # Incoming formats (e.g. wire.in.http.user/Registration)
+│   ├── out/          # Outgoing formats (e.g. wire.out.message.welcome-email)
+│   └── datomic/      # Datomic schemas (e.g. wire.datomic.user)
+└── adapters/         # wire ↔ domain translation
+    ├── http/wire-to-domain.clj   # wire->domain (inbound)
+    ├── message/domain-to-wire.clj # domain->wire (outbound)
+    └── datomic/domain-to-wire.clj # domain->wire (persistence)
+```
+
+## Data Flow
+
+### Inbound (wire → domain)
+
+1. **Diplomat** receives raw data (HTTP request, Kafka message).
+2. **Adapter** (`wire->domain`) converts wire schema → domain model.
+3. **Controller** receives domain model and orchestrates logic.
+
+### Outbound (domain → wire)
+
+1. **Controller** receives domain model and infrastructure protocols (`IProducer`, `IDatomic`, `IHttpClient`), then calls diplomat functions.
+2. **Diplomat** (producer, http-client, datomic.client) calls adapter (`domain->wire`) before sending.
+3. **Adapter** converts domain model → wire schema.
+
+## Adding New Features
+
+### New inbound endpoint (HTTP or message)
+
+1. Add wire schema in `wire/in/` (e.g. `wire.in.http.user/Registration`).
+2. Add adapter in `adapters/http/` or `adapters/message/` with `wire->domain` fn.
+3. Add handler in `diplomat/http_server.clj` or `diplomat/consumer.clj` that:
+   - Uses adapter to convert wire → domain
+   - Calls domain controller with domain model types and infrastructure protocols (IProducer, IDatomic, IHttpClient) as needed
+
+### New outbound call (HTTP, message, or DB)
+
+1. Add wire schema in `wire/out/` or `wire/datomic/`.
+2. Add adapter with `domain->wire` fn.
+3. Add diplomat function that uses adapter before calling external system.
+
+### New domain use case
+
+1. Add/update model in `domain/model/`.
+2. Add controller fn in `domain/controller.clj` that receives domain model types and infrastructure protocols (IDatomic, IProducer, IHttpClient) as needed, and returns domain model types.
+3. For outbound operations, call diplomat functions (producer, http-client, datomic.client), passing the protocol instances received as parameters.
+
+## Naming Conventions
+
+- **Wire schemas**: `wire.in.<protocol>.<domain>`, `wire.out.<protocol>.<domain>`
+- **Adapters**: `adapters.<protocol>.wire-to-domain` or `adapters.<protocol>.domain-to-wire`
+- **Adapter fns**: `wire->domain` (inbound), `domain->wire` (outbound)
+
+## Anti-Patterns to Avoid
+
+- Domain importing wire or adapters (domain may import diplomat).
+- Controllers receiving wire schemas as parameters (IDatomic, IProducer, IHttpClient are allowed).
+- Diplomat or controller doing wire↔domain conversion directly (use adapters).
+- Wire schemas depending on domain models.
+- Putting business logic in diplomat or adapters (keep it in domain).

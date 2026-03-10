@@ -4,14 +4,13 @@
    [blog.utils.request :as utils.request]
    [blog.components]
    [blog.adapters.post :as adapters.post]
-   [blog.controllers.post :as controllers.post]
-   [blog.diplomat.datomic.client :as datomic.client]))
+   [blog.controllers.post :as controllers.post]))
 
 (defn ping-handler [_request]
-  {:status  200
-   :body    {:status "ok"}})
+  {:status 200
+   :body {:status "ok"}})
 
-(defn create-post [{new-post   :data
+(defn create-post [{new-post :data
                     components :components}]
   (-> new-post
       (adapters.post/wire-in->model)
@@ -19,7 +18,19 @@
   {:status 201})
 
 (defn list-posts [{components :components}]
-  {:status 200 :body (datomic.client/list-posts (components :db))})
+  {:status 200 :body (controllers.post/ListPosts (components :db))})
+
+(defn edit-post [{edits :data
+                  path-params :path-params
+                  components :components}]
+  (let [id (:id path-params)
+        result (controllers.post/EditPost 
+                id
+                (adapters.post/wire-in-edit->partial-model edits)
+                (components :db))]
+    (if (= result :not-found)
+      {:status 404}
+      {:status 200})))
 
 (def common-interceptors
   [(utils.request/wrap-components (blog.components/make-components))
@@ -28,8 +39,8 @@
 
 (def routes
   #{["/api/ping"
-     :get  (conj common-interceptors
-                 ping-handler)
+     :get (conj common-interceptors
+                ping-handler)
      :route-name :ping]
 
     ["/api/post"
@@ -41,4 +52,10 @@
     ["/api/post"
      :get (conj common-interceptors
                 list-posts)
-     :route-name :list-posts]})
+     :route-name :list-posts]
+
+    ["/api/post/:id"
+     :patch (conj common-interceptors
+                  (utils.request/wrap-schema wire.in.post/EditPost)
+                  edit-post)
+     :route-name :edit-post]})

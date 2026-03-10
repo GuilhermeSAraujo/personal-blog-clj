@@ -4,4 +4,5 @@
                  [cheshire/cheshire "5.11.0"]
                  [prismatic/schema "1.4.1"]]
   :source-paths ["src"]
+  :test-paths ["test"]
   :main blog.server)

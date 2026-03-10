@@ -8,3 +8,7 @@
   {:title (get new-post :title)
    :content (get new-post :content)
    :tag-ids (get new-post :tag-ids)})
+
+(s/defn wire-in-edit->partial-model :- {s/Keyword s/Any}
+  [edits :- wire.in.post/EditPost]
+  (select-keys edits [:title :content :tag-ids]))

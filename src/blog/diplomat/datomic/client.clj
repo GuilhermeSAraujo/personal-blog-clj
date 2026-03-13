@@ -15,7 +15,7 @@
   clojure.lang.Atom
   (transact! [db entity]
     (let [id (str (java.util.UUID/randomUUID))]
-      (swap! db assoc id entity)
+      (swap! db assoc id (assoc entity :post/id id))
       id))
   (query-all! [db]
     (vals @db))
@@ -35,6 +35,6 @@
   (map adapters.wire->domain/wire->domain (query-all! db)))
 
 (s/defn update-post! [db id :- s/Str post :- models.post/Post]
-  (-> post
-      adapters.domain->wire/domain->wire
-      (->> (update! db id))))
+  (let [wire (assoc (adapters.domain->wire/domain->wire post) :post/id id)]
+    (update! db id wire)
+    nil))

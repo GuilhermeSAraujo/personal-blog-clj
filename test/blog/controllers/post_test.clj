@@ -16,12 +16,24 @@
       (let [db (make-db)
             id (datomic.client/save-post! db {:title "Old" :content "Content" :tag-ids [1]})]
         (is (= :ok (controllers.post/EditPost id {:title "New"} db)))
-        (is (= {:title "New" :content "Content" :tag-ids [1]}
-               (first (datomic.client/list-posts db))))))
+        (let [listed (first (datomic.client/list-posts db))]
+          (is (= id (:id listed)))
+          (is (= {:title "New" :content "Content" :tag-ids [1]}
+                 (dissoc listed :id))))))
 
     (testing "returns :ok with empty edits, post unchanged"
       (let [db (make-db)
             id (datomic.client/save-post! db {:title "Title" :content "Content" :tag-ids []})]
         (is (= :ok (controllers.post/EditPost id {} db)))
-        (is (= {:title "Title" :content "Content" :tag-ids []}
-               (first (datomic.client/list-posts db))))))))
+        (let [listed (first (datomic.client/list-posts db))]
+          (is (= id (:id listed)))
+          (is (= {:title "Title" :content "Content" :tag-ids []}
+                 (dissoc listed :id))))))))
+
+(deftest create-post-returns-id
+  (s/with-fn-validation
+    (let [db (make-db)
+          id (controllers.post/CreatePost {:title "T" :content "C" :tag-ids []} db)]
+      (is (string? id))
+      (is (< 0 (count id)))
+      (is (some? (datomic.client/find-by-id! db id))))))

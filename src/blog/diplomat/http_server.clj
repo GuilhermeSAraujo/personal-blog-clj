@@ -1,10 +1,21 @@
 (ns blog.diplomat.http-server
   (:require
+   [blog.env :as env]
+   [blog.wire.in.auth :as wire.in.auth]
    [blog.wire.in.post :as wire.in.post]
    [blog.utils.request :as utils.request]
    [blog.components]
    [blog.adapters.post :as adapters.post]
    [blog.controllers.post :as controllers.post]))
+
+(defn login-handler [{:keys [data]}]
+  (let [admin-user (env/get-env "ADMIN_USERNAME")
+        admin-pass (env/get-env "ADMIN_PASSWORD")
+        {:keys [username password]} data]
+    (if (and (some? admin-user) (some? admin-pass)
+             (= admin-user username) (= admin-pass password))
+      {:status 200 :body {:ok true}}
+      {:status 401 :body {:error "Unauthorized"}})))
 
 (defn ping-handler [_request]
   {:status 200
@@ -12,10 +23,10 @@
 
 (defn create-post [{new-post :data
                     components :components}]
-  (-> new-post
-      (adapters.post/wire-in->model)
-      (controllers.post/CreatePost (components :db)))
-  {:status 201})
+  (let [id (-> new-post
+               (adapters.post/wire-in->model)
+               (controllers.post/CreatePost (components :db)))]
+    {:status 201 :body {:id id}}))
 
 (defn list-posts [{components :components}]
   {:status 200 :body (controllers.post/ListPosts (components :db))})
@@ -58,4 +69,10 @@
      :patch (conj common-interceptors
                   (utils.request/wrap-schema wire.in.post/EditPost)
                   edit-post)
-     :route-name :edit-post]})
+     :route-name :edit-post]
+
+    ["/api/auth/login"
+     :post (conj common-interceptors
+                 (utils.request/wrap-schema wire.in.auth/Login)
+                 login-handler)
+     :route-name :login]})

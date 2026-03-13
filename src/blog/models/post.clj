@@ -3,6 +3,7 @@
 
 
 (def Post
-  {:title s/Str
-   :content s/Str
-   :tag-ids [s/Int]})
+  {(s/optional-key :id) s/Str
+   :title                s/Str
+   :content              s/Str
+   :tag-ids              [s/Int]})

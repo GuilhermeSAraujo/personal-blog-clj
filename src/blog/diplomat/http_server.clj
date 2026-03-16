@@ -5,17 +5,16 @@
    [blog.wire.in.post :as wire.in.post]
    [blog.utils.request :as utils.request]
    [blog.components]
-   [blog.adapters.post :as adapters.post]
+   [blog.controllers.auth :as controllers.auth]
    [blog.controllers.post :as controllers.post]))
 
 (defn login-handler [{:keys [data]}]
   (let [admin-user (env/get-env "ADMIN_USERNAME")
         admin-pass (env/get-env "ADMIN_PASSWORD")
-        {:keys [username password]} data]
-    (if (and (some? admin-user) (some? admin-pass)
-             (= admin-user username) (= admin-pass password))
-      {:status 200 :body {:ok true}}
-      {:status 401 :body {:error "Unauthorized"}})))
+        result (controllers.auth/Login data admin-user admin-pass)]
+    (if (:ok result)
+      {:status 200 :body result}
+      {:status 401 :body result})))
 
 (defn ping-handler [_request]
   {:status 200
@@ -23,9 +22,7 @@
 
 (defn create-post [{new-post :data
                     components :components}]
-  (let [id (-> new-post
-               (adapters.post/wire-in->model)
-               (controllers.post/CreatePost (components :db)))]
+  (let [id (controllers.post/CreatePost new-post (components :db))]
     {:status 201 :body {:id id}}))
 
 (defn list-posts [{components :components}]
@@ -35,10 +32,7 @@
                   path-params :path-params
                   components :components}]
   (let [id (:id path-params)
-        result (controllers.post/EditPost 
-                id
-                (adapters.post/wire-in-edit->partial-model edits)
-                (components :db))]
+        result (controllers.post/EditPost id edits (components :db))]
     (if (= result :not-found)
       {:status 404}
       {:status 200})))

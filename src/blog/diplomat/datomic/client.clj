@@ -38,3 +38,8 @@
   (let [wire (assoc (adapters.domain->wire/domain->wire post) :post/id id)]
     (update! db id wire)
     nil))
+
+(s/defn find-post-by-id! :- (s/maybe models.post/Post)
+  [db id :- s/Str]
+  (when-let [wire-entity (find-by-id! db id)]
+    (adapters.wire->domain/wire->domain wire-entity)))

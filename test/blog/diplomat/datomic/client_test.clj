@@ -28,7 +28,22 @@
             id (datomic.client/save-post! db original)
             updated {:title "New" :content "Content" :tag-ids [1]}
             found (do (datomic.client/update-post! db id updated)
-                     (datomic.client/find-by-id! db id))]
+                      (datomic.client/find-by-id! db id))]
         (is (= id (:post/id found)))
         (is (= {:post/title "New" :post/content "Content" :post/tag-ids [1]}
                (dissoc found :post/id)))))))
+
+(deftest find-post-by-id-test
+  (s/with-fn-validation
+    (testing "returns nil when post not found"
+      (let [db (make-db)]
+        (is (nil? (datomic.client/find-post-by-id! db "nonexistent")))))
+
+    (testing "returns domain model when post exists"
+      (let [db (make-db)
+            post {:title "T" :content "C" :tag-ids [1]}
+            id (datomic.client/save-post! db post)
+            found (datomic.client/find-post-by-id! db id)]
+        (is (= id (:id found)))
+        (is (= {:title "T" :content "C" :tag-ids [1]}
+               (dissoc found :id)))))))

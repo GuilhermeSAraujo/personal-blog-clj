@@ -6,6 +6,28 @@
 
 (defn make-db [] (atom {}))
 
+(deftest create-post-returns-id
+  (s/with-fn-validation
+    (let [db (make-db)
+          id (controllers.post/CreatePost {:title "T" :content "C" :tag-ids []} db)]
+      (is (string? id))
+      (is (< 0 (count id)))
+      (is (some? (datomic.client/find-by-id! db id))))))
+
+(deftest list-posts-returns-wire-out
+  (s/with-fn-validation
+    (let [db (make-db)
+          _ (controllers.post/CreatePost {:title "T" :content "C" :tag-ids [1]} db)
+          posts (controllers.post/ListPosts db)]
+      (testing "returns a non-empty list"
+        (is (= 1 (count posts))))
+      (testing "each post has wire.out shape with :id"
+        (let [post (first posts)]
+          (is (string? (:id post)))
+          (is (= "T" (:title post)))
+          (is (= "C" (:content post)))
+          (is (= [1] (:tag-ids post))))))))
+
 (deftest edit-post-test
   (s/with-fn-validation
     (testing "returns :not-found when post does not exist"
@@ -29,11 +51,3 @@
           (is (= id (:id listed)))
           (is (= {:title "Title" :content "Content" :tag-ids []}
                  (dissoc listed :id))))))))
-
-(deftest create-post-returns-id
-  (s/with-fn-validation
-    (let [db (make-db)
-          id (controllers.post/CreatePost {:title "T" :content "C" :tag-ids []} db)]
-      (is (string? id))
-      (is (< 0 (count id)))
-      (is (some? (datomic.client/find-by-id! db id))))))

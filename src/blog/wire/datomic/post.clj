@@ -2,7 +2,9 @@
   (:require [schema.core :as s]))
 
 (def Post
-  {(s/optional-key :post/id) s/Str
-   :post/title                s/Str
-   :post/content              s/Str
-   :post/tag-ids              [s/Int]})
+  {:post/slug s/Str
+   :post/title s/Str
+   :post/content s/Str
+   :post/tags [s/Keyword]
+   :post/published-at s/Str
+   :post/draft? s/Bool})

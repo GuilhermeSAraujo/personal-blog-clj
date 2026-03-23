@@ -2,11 +2,16 @@
   (:require [schema.core :as s]))
 
 (def NewPost
-  {:title s/Str
+  {:slug s/Str
+   :title s/Str
    :content s/Str
-   :tag-ids [s/Int]})
+   :tags [s/Str]
+   :published-at s/Str
+   :draft? s/Bool})
 
 (def EditPost
   {(s/optional-key :title) s/Str
    (s/optional-key :content) s/Str
-   (s/optional-key :tag-ids) [s/Int]})
+   (s/optional-key :tags) [s/Str]
+   (s/optional-key :published-at) s/Str
+   (s/optional-key :draft?) s/Bool})

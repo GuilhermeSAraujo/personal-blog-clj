@@ -4,50 +4,82 @@
             [blog.controllers.post :as controllers.post]
             [blog.diplomat.datomic.client :as datomic.client]))
 
-(defn make-db [] (atom {}))
+(defn make-db [] (atom {:posts {} :tags {}}))
 
-(deftest create-post-returns-id
+(def new-post
+  {:slug "my-post" :title "T" :content "C"
+   :tags [] :published-at "2026-03-20" :draft? false})
+
+(def draft-post
+  {:slug "my-draft" :title "Draft" :content "WIP"
+   :tags [] :published-at "2026-03-20" :draft? true})
+
+(deftest create-post-returns-slug
   (s/with-fn-validation
     (let [db (make-db)
-          id (controllers.post/CreatePost {:title "T" :content "C" :tag-ids []} db)]
-      (is (string? id))
-      (is (< 0 (count id)))
-      (is (some? (datomic.client/find-by-id! db id))))))
+          slug (controllers.post/CreatePost new-post db)]
+      (is (= "my-post" slug)))))
 
-(deftest list-posts-returns-wire-out
+(deftest list-posts-excludes-drafts
   (s/with-fn-validation
     (let [db (make-db)
-          _ (controllers.post/CreatePost {:title "T" :content "C" :tag-ids [1]} db)
-          posts (controllers.post/ListPosts db)]
-      (testing "returns a non-empty list"
-        (is (= 1 (count posts))))
-      (testing "each post has wire.out shape with :id"
-        (let [post (first posts)]
-          (is (string? (:id post)))
-          (is (= "T" (:title post)))
-          (is (= "C" (:content post)))
-          (is (= [1] (:tag-ids post))))))))
+          _ (controllers.post/CreatePost new-post db)
+          _ (controllers.post/CreatePost draft-post db)]
+      (testing "only returns published posts"
+        (let [posts (controllers.post/ListPosts db {} {})]
+          (is (= 1 (count posts)))
+          (is (= "my-post" (:slug (first posts)))))))))
+
+(deftest list-posts-tag-filter
+  (s/with-fn-validation
+    (let [db (make-db)
+          clj-post (assoc new-post :slug "clj-post" :tags ["clojure"])
+          js-post (assoc new-post :slug "js-post" :tags ["nodejs"])
+          _ (controllers.post/CreatePost clj-post db)
+          _ (controllers.post/CreatePost js-post db)]
+      (testing "filters by tag"
+        (is (= 1 (count (controllers.post/ListPosts db {:tag "clojure"} {})))))
+      (testing "returns all when no filter"
+        (is (= 2 (count (controllers.post/ListPosts db {} {}))))))))
+
+(deftest list-posts-pagination
+  (s/with-fn-validation
+    (let [db (make-db)
+          posts (mapv #(assoc new-post :slug (str "p" %)) (range 15))
+          _ (doseq [p posts] (controllers.post/CreatePost p db))]
+      (testing "default page size is 10"
+        (is (= 10 (count (controllers.post/ListPosts db {} {})))))
+      (testing "page 2 returns remainder"
+        (is (= 5 (count (controllers.post/ListPosts db {:page "2"} {}))))))))
+
+(deftest get-post-by-slug-test
+  (s/with-fn-validation
+    (let [db (make-db)
+          _ (controllers.post/CreatePost new-post db)]
+      (testing "returns post when found"
+        (is (some? (controllers.post/GetPost "my-post" db))))
+      (testing "returns :not-found when missing"
+        (is (= :not-found (controllers.post/GetPost "nope" db)))))))
 
 (deftest edit-post-test
   (s/with-fn-validation
-    (testing "returns :not-found when post does not exist"
+    (testing "returns :not-found for unknown slug"
       (let [db (make-db)]
-        (is (= :not-found (controllers.post/EditPost "nonexistent" {} db)))))
+        (is (= :not-found (controllers.post/EditPost "nope" {} db)))))
 
-    (testing "returns :ok and updates only the provided fields"
+    (testing "returns :ok and updates fields"
       (let [db (make-db)
-            id (datomic.client/save-post! db {:title "Old" :content "Content" :tag-ids [1]})]
-        (is (= :ok (controllers.post/EditPost id {:title "New"} db)))
-        (let [listed (first (datomic.client/list-posts db))]
-          (is (= id (:id listed)))
-          (is (= {:title "New" :content "Content" :tag-ids [1]}
-                 (dissoc listed :id))))))
+            _ (controllers.post/CreatePost new-post db)]
+        (is (= :ok (controllers.post/EditPost "my-post" {:title "New"} db)))
+        (is (= "New" (:title (controllers.post/GetPost "my-post" db))))))))
 
-    (testing "returns :ok with empty edits, post unchanged"
+(deftest delete-post-test
+  (s/with-fn-validation
+    (testing "returns :not-found for unknown slug"
+      (let [db (make-db)]
+        (is (= :not-found (controllers.post/DeletePost "nope" db)))))
+    (testing "returns :ok and removes post"
       (let [db (make-db)
-            id (datomic.client/save-post! db {:title "Title" :content "Content" :tag-ids []})]
-        (is (= :ok (controllers.post/EditPost id {} db)))
-        (let [listed (first (datomic.client/list-posts db))]
-          (is (= id (:id listed)))
-          (is (= {:title "Title" :content "Content" :tag-ids []}
-                 (dissoc listed :id))))))))
+            _ (controllers.post/CreatePost new-post db)]
+        (is (= :ok (controllers.post/DeletePost "my-post" db)))
+        (is (= :not-found (controllers.post/GetPost "my-post" db)))))))

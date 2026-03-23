@@ -6,6 +6,9 @@
 
 (s/defn domain->wire :- wire.datomic.post/Post
   [post :- models.post/Post]
-  {:post/title    (:title post)
-   :post/content  (:content post)
-   :post/tag-ids  (:tag-ids post)})
+  {:post/slug (:slug post)
+   :post/title (:title post)
+   :post/content (:content post)
+   :post/tags (:tags post)
+   :post/published-at (:published-at post)
+   :post/draft? (:draft? post)})

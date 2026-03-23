@@ -5,23 +5,23 @@
 
 (deftest path-match-test
   (testing "path-match with param returns path-params"
-    (let [m (server/path-match "/api/post/:id" "/api/post/uuid-here")]
+    (let [m (server/path-match "/api/post/:slug" "/api/post/my-post")]
       (is (some? m))
-      (is (= "uuid-here" (get-in m [:path-params :id])))))
+      (is (= "my-post" (get-in m [:path-params :slug])))))
 
-  (testing "path-match \"/api/post/:id\" \"/api/post/some-id\" returns :path-params {:id \"some-id\"}"
-    (is (= {:path-params {:id "some-id"}}
-           (server/path-match "/api/post/:id" "/api/post/some-id"))))
+  (testing "path-match \"/api/post/:slug\" \"/api/post/some-slug\" returns :path-params {:slug \"some-slug\"}"
+    (is (= {:path-params {:slug "some-slug"}}
+           (server/path-match "/api/post/:slug" "/api/post/some-slug"))))
 
   (testing "path-match returns nil when segment count differs (uri shorter)"
-    (is (nil? (server/path-match "/api/post/:id" "/api/post"))))
+    (is (nil? (server/path-match "/api/post/:slug" "/api/post"))))
 
   (testing "path-match returns nil when segment count differs (uri longer)"
-    (is (nil? (server/path-match "/api/post/:id" "/api/post/foo/bar")))))
+    (is (nil? (server/path-match "/api/post/:slug" "/api/post/foo/bar")))))
 
 (deftest match-route-path-params-test
-  (testing "match-route returns :path-params for PATCH /api/post/:id"
-    (let [request {:uri "/api/post/some-id" :request-method :patch}
-          match   (server/match-route http-server/routes request)]
+  (testing "match-route returns :path-params for PATCH /api/post/:slug"
+    (let [request {:uri "/api/post/some-slug" :request-method :patch}
+          match (server/match-route http-server/routes request)]
       (is (some? match))
-      (is (= "some-id" (get-in match [:path-params :id]))))))
+      (is (= "some-slug" (get-in match [:path-params :slug]))))))

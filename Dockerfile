@@ -4,10 +4,10 @@ COPY project.clj .
 RUN lein deps
 COPY src src
 COPY resources resources
-RUN lein uberjar && find /app/target -name "*.jar" -type f
+RUN lein uberjar
 
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
-COPY --from=build /app/target/uberjar/blog-standalone.jar app.jar
+COPY --from=build /app/target/blog-standalone.jar app.jar
 EXPOSE 8080
 ENTRYPOINT ["java", "-jar", "app.jar"]

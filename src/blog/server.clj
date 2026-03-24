@@ -3,7 +3,8 @@
             [blog.env :as env]
             [clojure.string :as str]
             [org.httpkit.server :as http]
-            [blog.utils.request :as utils.request]))
+            [blog.utils.request :as utils.request])
+  (:gen-class))
 
 (def ^:private cors-headers
   {"Access-Control-Allow-Origin"  (or (System/getenv "CORS_ORIGIN") "*")

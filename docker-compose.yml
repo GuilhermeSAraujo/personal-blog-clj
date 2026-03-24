@@ -1,0 +1,15 @@
+services:
+  blog:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      CORS_ORIGIN: ${CORS_ORIGIN}
+      ADMIN_USERNAME: ${ADMIN_USERNAME}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+    volumes:
+      - blog-data:/app/data
+    restart: unless-stopped
+
+volumes:
+  blog-data:

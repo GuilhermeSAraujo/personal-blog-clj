@@ -19,7 +19,7 @@ checkouts/
 *.iml
 *.ipr
 *.iws
-out/
+/out/
 
 # VS Code / Calva
 .vscode/

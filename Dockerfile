@@ -4,7 +4,7 @@ COPY project.clj .
 RUN lein deps
 COPY src src
 COPY resources resources
-RUN lein uberjar
+RUN lein uberjar && find /app/target -name "*.jar" -type f
 
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app

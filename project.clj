@@ -6,4 +6,5 @@
   :source-paths ["src"]
   :test-paths ["test"]
   :main blog.server
-  :profiles {:uberjar {:aot :all}})
+  :profiles {:uberjar {:aot :all
+                       :uberjar-name "blog-standalone.jar"}})
